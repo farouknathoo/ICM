@@ -1,2 +1,2 @@
 # ICM
-## This is the implementation for Iterated Conditional Mode algortihm on Medical Imaging data. 
+## This is the implementation for Iterated Conditional Mode algorithm on Medical Imaging data. 

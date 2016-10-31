@@ -165,23 +165,22 @@ for (t in 1:T)
 #     eps_m  <- mvrnorm( n = 1, mu = rep(0,n_M), Sigma = diag(x = sigma2_M, ncol = n_M, nrow = n_M) )
 #     eps_e <- mvrnorm( n = 1, mu = rep(0,n_E), Sigma = diag(x = sigma2_E, ncol = n_M, nrow = n_M) ) 
 #      
-    # Mixture Components
-    mix.comp <- c(rnorm(1, mu[1,t],sqrt(alpha[1])),
-                  rnorm(1, mu[2,t],sqrt(alpha[2])),
-                  rnorm(1, mu[3,t],sqrt(alpha[3])),
-                  rnorm(1, mu[4,t],sqrt(alpha[4])))
-    
-   #  Mapping the state to corresponding components.
-    S[,t] <- mix.comp[cube.state]
    
+   #  Mapping the state to corresponding components.
+   for (j in 1:1000)
+              {
+              # Mixture Components
+               mix.comp <- c(rnorm(1, mu[1,t],sqrt(alpha[1])),
+                          rnorm(1, mu[2,t],sqrt(alpha[2])),
+                          rnorm(1, mu[3,t],sqrt(alpha[3])),
+                          rnorm(1, mu[4,t],sqrt(alpha[4])))
+            
+               S[j,t] <- mix.comp[cube.state[j]]
+             }  
+          
     M[,t] <- X_M %*% S[,t] 
     E[,t] <- X_E %*% S[,t]
-    
-#    if (t < T)
-#       {
-#         mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = 1, ncol = K-1, nrow = K-1))
-#       }
-  
+
     }
 
 matplot(t(S),type = "l",col = cube.state,ylab="S(t)", xlab="t")
@@ -208,4 +207,5 @@ title(main = "EEG signals without noise")
  matplot(t(E_noise),type = "l",col = cube.state,ylab="E_noise(t)", xlab="t")
  title(main = "EEG signals with noise")
  
+
  

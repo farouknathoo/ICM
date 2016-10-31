@@ -119,7 +119,7 @@ mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_u1*1, ncol = K-1, n
 t <- 1 
 while (t < T)
 {
-  mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = 1, ncol = K-1, nrow = K-1))
+  mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))
   t <- t+1
 }
 
@@ -150,8 +150,6 @@ Z.state <- BlocksGibbs(1, nvertex = 252,ncolor = 4, neighbors = neighbors, block
 # Map the vertices into cube and get the cube state for correspoding vertex.
 cube.state <- Z.state[vert.Z]
 plot3d(sub.vert,col = cube.state)
-
-
 
 
 # Covariance Matrix

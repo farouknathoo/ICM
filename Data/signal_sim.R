@@ -16,6 +16,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   library(MASS)
   library(PottsUtils)
   library(MCMCpack)
+  
   # Vertices data is obtained from the MATLAB as a mat file named "vert".
   path <- getwd()
   setwd(path)
@@ -26,10 +27,11 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # Take the subset from all 5124 vertices.
   sub.index <- sample(1:5124,P,replace = F)
   sub.vert <- vert.data[sub.index,]
-  r3dDefaults$windowRect <- c( 0 , 45 ,780, 667) 
+  r3dDefaults$windowRect <- c(0,45,780,667) 
   plot3d(sub.vert,pch=19,col="red")
   play3d( spin3d(rpm=3), duration=10)
-  # 
+  
+  len.cubes <- c_length
   x.cut <- seq(-68,68+len.cubes,len.cubes)
   x.cut
   
@@ -113,6 +115,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   
   # Map the vertices into cube and get the cube state for correspoding vertex.
   cube.state <- Z.state[vert.Z]
+  r3dDefaults$windowRect <- c(0,45,780,667) 
   plot3d(sub.vert,col = cube.state)
   play3d( spin3d(rpm=3), duration=10)
   # Covariance Matrix

@@ -110,7 +110,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
                        0,0,0,0), nrow=3, byrow=TRUE)
   neighbors <- getNeighbors(mask, neiStruc)
   blocks <- getBlocks(mask, nblock=2)
-  Z.state <- BlocksGibbs(1, nvertex = 252,ncolor = 4, neighbors = neighbors, blocks = blocks, beta = beta_u )
+  Z.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta_u )
   
   
   # Map the vertices into cube and get the cube state for correspoding vertex.

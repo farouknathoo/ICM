@@ -172,13 +172,6 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   matplot(t(E_noise),type = "l",ylab="E_noise(t)", xlab="t")
   title(main = "EEG signals with noise")
   
-#   write.table(x = S,file = "./Data/S_t.txt",row.names = c(1:P),col.names = c(1:T)) 
-#   write.table(x = M_noise,file = "./Data/M_noise.txt",row.names = c(1:n_M),col.names = c(1:T)) 
-#   write.table(x = E_noise,file = "./Data/E_noise.txt",row.names = c(1:n_E),col.names = c(1:T)) 
-#   write.table(x = Z.state, file = "./Data/Z_state.txt")
-#   write.table(x = blocks,file = "./Data/block.txt")
-#   write.table(x = neighbors,file = "./Data/Neighborhood.txt")
-#   write.table(x = vert.Z,file = "./Data/vert_cube.txt")
-    save(S,M_noise,E_noise,Z.state,blocks,neighbors,vert.Z,file = "./Data/simulation.RData")  
+  save(S,M_noise,E_noise,cube.state,beta_u,Z.state,blocks,neighbors,vert.Z,file = "./Data/simulation.RData")  
 }
  

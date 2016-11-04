@@ -29,35 +29,27 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   sub.vert <- vert.data[sub.index,]
   r3dDefaults$windowRect <- c(0,45,780,667) 
   plot3d(sub.vert,pch=19,col="red")
-  play3d( spin3d(rpm=3), duration=10)
+  play3d( spin3d(rpm=3), duration=5)
   
   len.cubes <- c_length
   x.cut <- seq(-68,68+len.cubes,len.cubes)
-  x.cut
-  
   # Numeber of intervals on x axis
   n.x <- length(x.cut) - 1
   
   y.cut <- seq(-105,68+len.cubes,len.cubes)
-  y.cut
-  
   # Numeber of intervals on y axis
   n.y <- length(y.cut) -1
   
   z.cut <- seq(-49,78+len.cubes,len.cubes)
-  z.cut
-  
   # Numeber of intervals on z axis
   n.z <- length(z.cut) - 1
-  n.z
-  
+
   # total number of voxels:
   n.v <- n.x*n.y*n.z
   
   # For each vertex, finding which intervals its x, y, z in. 
   vl <- cbind(findInterval(sub.vert$x,x.cut),findInterval(sub.vert$y,y.cut),findInterval(sub.vert$z,z.cut))
-  vl
-  
+
   # Mapping the indices into the labelling of each cube. 
   vert.Z <- rep(NA, P)
   for(i in 1:P)
@@ -84,6 +76,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
     mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))
     t <- t+1
   }
+  
   matplot(t(mu),type = "l",ylab="mu(t)",xlab = "t",lwd = 2)
   title(main = "Latent State Dynamics")
   
@@ -117,7 +110,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   cube.state <- Z.state[vert.Z]
   r3dDefaults$windowRect <- c(0,45,780,667) 
   plot3d(sub.vert,col = cube.state)
-  play3d( spin3d(rpm=3), duration=10)
+  play3d( spin3d(rpm=3), duration=5)
   # Covariance Matrix
   H_M <- diag(1, nrow = n_M, ncol = n_M)
   H_E <- diag(1, nrow = n_E, ncol = n_E)
@@ -172,6 +165,6 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   matplot(t(E_noise),type = "l",ylab="E_noise(t)", xlab="t")
   title(main = "EEG signals with noise")
   
-  save(S,M_noise,E_noise,cube.state,beta_u,Z.state,blocks,neighbors,vert.Z,file = "./Data/simulation.RData")  
+  save(P,K,T,S,M_noise,alpha,E_noise,cube.state,X_M,X_E,H_E,H_M,beta_u,Z.state,blocks,neighbors,vert.Z,mu,file = "./Data/simulation.RData")  
 }
  

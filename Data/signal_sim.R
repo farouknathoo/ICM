@@ -1,4 +1,5 @@
 signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_A, sigma2_u1,SNR){
+  # The main working directory is always under "./ICM"
   # R code for Bayesian source Reconstruction for MEG and EEG Data.
   # P is the sample size of vertices.
   # K is number of states.
@@ -27,7 +28,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # Take the subset from all 5124 vertices.
   sub.index <- sample(1:5124,P,replace = F)
   sub.vert <- vert.data[sub.index,]
-  r3dDefaults$windowRect <- c(0,45,780,667) 
+  r3dDefaults$windowRect <- c( 0,45,742,703)
   plot3d(sub.vert,pch=19,col="red")
   play3d( spin3d(rpm=3), duration=5)
   
@@ -165,6 +166,15 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   matplot(t(E_noise),type = "l",ylab="E_noise(t)", xlab="t")
   title(main = "EEG signals with noise")
   
-  save(P,K,T,S,M_noise,alpha,E_noise,cube.state,X_M,X_E,H_E,H_M,beta_u,Z.state,blocks,neighbors,vert.Z,mu,file = "./Data/simulation.RData")  
+  Y_M <- M_noise
+  Y_E <- E_noise
+  
+  save(Y_M,file = "./Data/Y_M.RData")  
+  save(Y_E,file = "./Data/Y_E.RData")  
+  save(H_M,file = "./Data/H_M.RData")  
+  save(H_E,file = "./Data/H_E.RData")  
+  save(X_E,file = "./Data/X_E.RData")
+  save(X_M,file = "./Data/X_M.RData")
+  save(sub.vert,file = "./Data/sub_vert.RData")
 }
  

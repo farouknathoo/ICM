@@ -23,7 +23,7 @@ P <- dim(sub.vert)[1]
 K <- 4
 
 # Pre-set Number of cubes 
-n.v <- 200
+n.v <- 220
 
 d.length <- ((range(sub.vert$x)[2] - range(sub.vert$x)[1])*(range(sub.vert$y)[2] - range(sub.vert$y)[1])*(range(sub.vert$z)[2] - range(sub.vert$z)[1]) / n.v)^(1/3)
 len.cubes <- d.length 

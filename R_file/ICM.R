@@ -81,7 +81,7 @@ a_M <- 0.1; b_M <- 0.1
 a_a <- 0.1; b_a <- 0.1
 a_alpha <- 0.1; b_alpha <- 0.1
 sigma2_A <- 0.25
-simga2_mu1 <- 1 # check sensitivity
+sigma2_mu1 <- 1 # check sensitivity
 beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 
 ###################################################################
@@ -115,7 +115,7 @@ alpha <- c(1,1,1.5,2)
 mu <- matrix(0, nrow = K, ncol = T)
 # when t = 1
 t <- 1 
-mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_u1*1, ncol = K-1, nrow = K-1))
+mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_mu1*1, ncol = K-1, nrow = K-1))
 while (t < T)
 {
   mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))

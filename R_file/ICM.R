@@ -5,6 +5,12 @@
 ## The main working directory is always under "./ICM"
 setwd(dir = "~/ICM/")
 rm(list = ls())
+library(rgl)
+library(R.matlab)
+library(scatterplot3d)
+library(MASS)
+library(PottsUtils)
+library(MCMCpack)
 # Load the simulation data.
 load("./Data/Y_E.RData")
 load("./Data/Y_M.RData")
@@ -54,15 +60,6 @@ for(i in 1:P)
   vert.Z[i] <- vl[i,1] + (vl[i,2] -1)*n.x + (vl[i,3] -1)*(n.x*n.y)
 }
 
-# 3D array specifying cubes.
-mask <- array(1, dim = c(n.x, n.y, n.z))
-
-# Define the neighborhood structure(First order) and get the neighbor matrix.
-neiStruc <- matrix(c(2,2,0,0,
-                     0,2,0,0,
-                     0,0,0,0), nrow=3, byrow=TRUE)
-neighbors <- getNeighbors(mask, neiStruc)
-blocks <- getBlocks(mask, nblock=2)
 
 
 ####################################################################
@@ -85,8 +82,7 @@ a_a <- 0.1; b_a <- 0.1
 a_alpha <- 0.1; b_alpha <- 0.1
 sigma2_A <- 0.25
 simga2_mu1 <- 1 # check sensitivity
-beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
-
+beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 
 ###################################################################
 ###################################################################
@@ -94,10 +90,20 @@ beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 
 beta <- runif(1,0,beta_u)
 A <- diag(sample(seq(0.9,0.95,0.01),K-1))
+# 3D array specifying cubes.
+mask <- array(1, dim = c(n.x, n.y, n.z))
 
+# Define the neighborhood structure(First order) and get the neighbor matrix.
+neiStruc <- matrix(c(2,2,0,0,
+                     0,2,0,0,
+                     0,0,0,0), nrow=3, byrow=TRUE)
+neighbors <- getNeighbors(mask, neiStruc)
+blocks <- getBlocks(mask, nblock=2)
 # Get intial state for each vertex from correspoding cube. 
+beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta)
 Z.state <- cube.state[vert.Z]
+
 
 # For the variance components 
 sigma2_a <- 1
@@ -127,7 +133,7 @@ for (t in 1:T)
                   rnorm(1, mu[2,t],sqrt(alpha[2])),
                   rnorm(1, mu[3,t],sqrt(alpha[3])),
                   rnorm(1, mu[4,t],sqrt(alpha[4])))
-    S[j,t] <- mix.comp[cube.state[j]]
+    S[j,t] <- mix.comp[Z.state[j]]
   }  
 }
 

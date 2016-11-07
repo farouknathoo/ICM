@@ -15,7 +15,7 @@ load("./Data/X_M.RData")
 load("./Data/sub_vert.RData")
 ls() 
 
-# Building data 
+# Built-in data 
 n_M  <- dim(Y_M)[1]
 n_E  <- dim(Y_E)[1]
 T <-  dim(Y_M)[2]
@@ -67,7 +67,7 @@ blocks <- getBlocks(mask, nblock=2)
 
 ####################################################################
 ####################################################################
-## Scale the measurement
+## Scale the measurement of MEG and EEG.
 
 M <- Y_M / sqrt(1 / n_M* sum(diag(Y_M %*% t(Y_M))))
 E <- Y_E / sqrt(1 / n_E* sum(diag(Y_E %*% t(Y_E))))
@@ -105,6 +105,7 @@ sigma2_E <- 100
 sigma2_M <- 100
 alpha <- c(1,1,1.5,2)
 
+# Initial values for mu
 mu <- matrix(0, nrow = K, ncol = T)
 # when t = 1
 t <- 1 
@@ -115,6 +116,7 @@ while (t < T)
   t <- t+1
 }
 
+# Initial value for S
 S <- matrix(0, nrow = P, ncol = T)
 for (t in 1:T)
 {
@@ -125,7 +127,6 @@ for (t in 1:T)
                   rnorm(1, mu[2,t],sqrt(alpha[2])),
                   rnorm(1, mu[3,t],sqrt(alpha[3])),
                   rnorm(1, mu[4,t],sqrt(alpha[4])))
-    
     S[j,t] <- mix.comp[cube.state[j]]
   }  
 }

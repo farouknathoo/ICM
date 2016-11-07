@@ -63,6 +63,16 @@ neighbors <- getNeighbors(mask, neiStruc)
 blocks <- getBlocks(mask, nblock=2)
 
 
+####################################################################
+####################################################################
+## Scale the measurement
+
+M <- Y_M / sqrt(1 / n_M* sum(diag(Y_M %*% t(Y_M))))
+E <- Y_E / sqrt(1 / n_E* sum(diag(Y_E %*% t(Y_E))))
+
+X_E <-  X_E / sqrt(1 / n_E* sum(diag(X_E %*% t(X_E))))
+X_M <-  X_M / sqrt(1 / n_M* sum(diag(X_M %*% t(X_M))))
+
 
 ####################################################################
 ####################################################################
@@ -72,7 +82,7 @@ a_M <- 0.1; b_M <- 0.1
 a_a <- 0.1; b_a <- 0.1
 a_alpha <- 0.1; b_alpha <- 0.1
 sigma2_A <- 0.25
-simga2_mu1 <- 1
+simga2_mu1 <- 1 # check sensitivity
 beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 
 
@@ -80,7 +90,7 @@ beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 ###################################################################
 ## Initializing values
 
-beta <-  runif(1, 0, beta_u)
+beta <- runif(1, 0, beta_u)
 A <- diag(sample(seq(0.9,0.95,0.01),K-1))
 
 # Get intial state for each vertex from correspoding cube. 
@@ -88,8 +98,34 @@ cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, bl
 Z.state <- cube.state[vert.Z]
 
 # For the variance components 
+sigma2_a <- 1
+sigma2_E <- 100
+sigma2_M <- 100
+alpha <- c(1,1,1.5,2)
 
+mu <- matrix(0, nrow = K, ncol = T)
+# when t = 1
+t <- 1 
+mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_u1*1, ncol = K-1, nrow = K-1))
+while (t < T)
+{
+  mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))
+  t <- t+1
+}
 
-
+S <- matrix(0, nrow = P, ncol = T)
+for (t in 1:T)
+{
+  for (j in 1:P)
+  {
+    # Mixture Components
+    mix.comp <- c(rnorm(1, mu[1,t],sqrt(alpha[1])),
+                  rnorm(1, mu[2,t],sqrt(alpha[2])),
+                  rnorm(1, mu[3,t],sqrt(alpha[3])),
+                  rnorm(1, mu[4,t],sqrt(alpha[4])))
+    
+    S[j,t] <- mix.comp[cube.state[j]]
+  }  
+}
 
 

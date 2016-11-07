@@ -175,5 +175,6 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   save(X_E,file = "./Data/X_E.RData")
   save(X_M,file = "./Data/X_M.RData")
   save(sub.vert,file = "./Data/sub_vert.RData")
+  save(S, file = "./Data/S.RData")
 }
  

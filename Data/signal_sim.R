@@ -19,8 +19,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   library(MCMCpack)
   
   # Vertices data is obtained from the MATLAB as a mat file named "vert".
-  path <- getwd()
-  setwd(path)
+  setwd(dir = "~/ICM/")
   data <- readMat("./Data/vert.mat")
   
   vert.data <- data.frame(x = data$vert[,1],y = data$vert[,2],z = data$vert[,3])
@@ -152,12 +151,6 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # Add the measurement noise into the signals
   sigma2_M <- SNR*mean(apply(M, 2, var))
   sigma2_E <- SNR*mean(apply(E, 2, var))
-  
-  print(sigma2_M)
-  print(sigma2_E)
-  print(alpha)
-  print(sigma2_a)
-  
   
   eps_m  <- mvrnorm( n = T, mu = rep(0,n_M), Sigma = diag(x = sigma2_M, ncol = n_M, nrow = n_M) )
   eps_e <- mvrnorm( n = T, mu = rep(0,n_E), Sigma = diag(x = sigma2_E, ncol = n_M, nrow = n_M) ) 

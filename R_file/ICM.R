@@ -3,6 +3,7 @@
 ## Algorithm and pseudo code could be found in the Model_Setup document.
 ## Simulaton data could be read from the Data folder directory. 
 ## The main working directory is always under "./ICM"
+setwd(dir = "~/ICM/")
 rm(list = ls())
 # Load the simulation data.
 load("./Data/Y_E.RData")
@@ -41,6 +42,7 @@ n.z <- length(z.cut) - 1
 
 # Actual total number of voxels:
 n.v <- n.x*n.y*n.z
+n.v
 
 # For each vertex, finding which intervals its x, y, z in. 
 vl <- cbind(findInterval(sub.vert$x,x.cut),findInterval(sub.vert$y,y.cut),findInterval(sub.vert$z,z.cut))
@@ -90,7 +92,7 @@ beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 ###################################################################
 ## Initializing values
 
-beta <- runif(1, 0, beta_u)
+beta <- runif(1,0,beta_u)
 A <- diag(sample(seq(0.9,0.95,0.01),K-1))
 
 # Get intial state for each vertex from correspoding cube. 

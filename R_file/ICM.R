@@ -137,4 +137,60 @@ for (t in 1:T)
   }  
 }
 
+## ICM updating algorithm and intial set-up.
+R  <- 100
+sigma2_M_star <- rep(0,R)
+sigma2_M_star[1]  <- sigma2_M
+
+sigma2_E_star <- rep(0,R)
+sigma2_E_star[1]  <- sigma2_E
+
+sigma2_a_star <- rep(0,R)
+sigma2_a_star <- sigma2_a
+
+vec_A_star <- matrix(0,nrow = (K-1)^2, ncol = R)
+vec_A_star[,1] <- as.vector(A)
+
+  
+alpha_star <- matrix(0, nrow = K, ncol = R)
+alpha_star[,1] <- alpha
+
+mu_star <- array(0,dim = c(K-1,T,R))
+mu_star[, , 1] <- mu[2:K,]
+
+S_star <- array(0,dim = c(P, T, R))
+S_star[, , 1] <- S
+  
+Z.nv <- matrix(0,nrow = n.v, ncol = R)
+Z.nv[,1] <- cube.state
+
+beta_star <- rep(0,R)
+beta_star[1] <- beta
+
+r <- 1
+
+while (r < R) {
+  
+    # Update the sigma2_M 
+    a_M <- a_M + T*n_M / 2
+    b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S_star[, , r]) %*% solve(H_M) %*% (Y_M - X_M %*% S_star[,,r]))) + b_M
+    sigma2_M_star[r+1] <- b_M / (a_M + 1)
+    
+    # Update the sigma2_E
+    a_E <- a_E + T*n_E /2
+    b_E <- 1/2 *sum( diag(t(Y_M - X_M %*%  S_star[, , r]) %*% solve(H_M) %*% (Y_M - X_M %*%  S_star[, , r]))) + b_E
+    sigma2_E_star[r+1] <- b_E / (a_E + 1)
+    
+    # Update the  sigma2_a
+    a_a <- a_a + (T -1) * (K - 1) / 2
+    b_a <- b_a + 1/2 * sum( diag( t(mu_star[,2:T,r] - matrix(vec_A_star[,r],nrow = K-1)%*%mu_star[,1:T-1,r]) %*% (mu_star[,2:T,r]  - matrix(vec_A_star[,r],nrow = K-1)%*%mu_star[,1:T-1,r])))
+    sigma2_a_star[r+1] <- b_a / (a_a + 1)
+    
+    # Update the vec(A)
+    
+    
+    
+}
+
+
 

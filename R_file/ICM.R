@@ -208,9 +208,11 @@ while (r < R) {
     b_alpha_l <- rep(0,4)
     for ( l in 1:K)
       {
-        
+        a_alpha_l[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
+        b_alpha_l[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 1, mu[l,]))^2 )
+        alpha[l] <- b_alpha_l[l] / ( a_alpha_l[l] + 1)
       }
-    
+    alpha_star[,r+1] <- alpha
 }
 
 

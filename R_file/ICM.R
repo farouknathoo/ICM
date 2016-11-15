@@ -173,21 +173,37 @@ while (r < R) {
   
     # Update the sigma2_M 
     a_M <- a_M + T*n_M / 2
-    b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S_star[, , r]) %*% solve(H_M) %*% (Y_M - X_M %*% S_star[,,r]))) + b_M
+    b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S) %*% solve(H_M) %*% (Y_M - X_M %*% S))) + b_M
     sigma2_M_star[r+1] <- b_M / (a_M + 1)
     
     # Update the sigma2_E
     a_E <- a_E + T*n_E /2
-    b_E <- 1/2 *sum( diag(t(Y_M - X_M %*%  S_star[, , r]) %*% solve(H_M) %*% (Y_M - X_M %*%  S_star[, , r]))) + b_E
+    b_E <- 1/2 *sum( diag(t(Y_M - X_M %*% S) %*% solve(H_M) %*% (Y_M - X_M %*% S))) + b_E
+    sigma2_E <- b_E / (a_E + 1)
     sigma2_E_star[r+1] <- b_E / (a_E + 1)
     
     # Update the  sigma2_a
     a_a <- a_a + (T -1) * (K - 1) / 2
-    b_a <- b_a + 1/2 * sum( diag( t(mu_star[,2:T,r] - matrix(vec_A_star[,r],nrow = K-1)%*%mu_star[,1:T-1,r]) %*% (mu_star[,2:T,r]  - matrix(vec_A_star[,r],nrow = K-1)%*%mu_star[,1:T-1,r])))
+    b_a <- b_a + 1/2 * sum( diag( t( mu[2:K, 2:T]- A%*%mu[2:K,1:T-1]) %*% (mu[2:K, 2:T]  - A %*%mu[2:K, 1:T-1])))
+    sigma2_a <- b_a / (a_a + 1)
     sigma2_a_star[r+1] <- b_a / (a_a + 1)
     
     # Update the vec(A)
+    sKr_t <- 0
+    vc <- 0
+    for (t in 2:T)
+    {
+      Kr_t <- kronecker( t(mu[2:K,t - 1]), diag(1, K-1))
+      sKr_t <-  sKr_t + t(Kr_t) %*% Kr_t
+      vc <- vc  + t(mu[2:K,t]) %*% Kr_t
+    }
     
+    C_1 <- 1 / sigma2_A * diag(1,(K-1)^2) + 1/sigma2_a * sKr_t
+    V_1  <- t( 1/sigma2_a * vc %*% solve(C_1))
+    A <- matrix(V_1, nrow = K-1)
+    vec_A_star[r+1] <- as.vector(A)
+    
+    # Update for each alpha_l 
     
     
 }

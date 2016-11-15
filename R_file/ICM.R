@@ -155,8 +155,8 @@ vec_A_star[,1] <- as.vector(A)
 alpha_star <- matrix(0, nrow = K, ncol = R)
 alpha_star[,1] <- alpha
 
-mu_star <- array(0,dim = c(K-1,T,R))
-mu_star[, , 1] <- mu[2:K,]
+mu_star <- array(0,dim = c(K,T,R))
+mu_star[, , 1] <- mu
 
 S_star <- array(0,dim = c(P, T, R))
 S_star[, , 1] <- S
@@ -199,12 +199,17 @@ while (r < R) {
     }
     
     C_1 <- 1 / sigma2_A * diag(1,(K-1)^2) + 1/sigma2_a * sKr_t
-    V_1  <- t( 1/sigma2_a * vc %*% solve(C_1))
+    V_1 <- t( 1/sigma2_a * vc %*% solve(C_1))
     A <- matrix(V_1, nrow = K-1)
-    vec_A_star[r+1] <- as.vector(A)
+    vec_A_star[,r+1] <- as.vector(A)
     
-    # Update for each alpha_l 
-    
+    # Update for each alpha_l, for each alpha_l, it's a inverse-gamma distribution.
+    a_alpha_l <- rep(0,4)
+    b_alpha_l <- rep(0,4)
+    for ( l in 1:K)
+      {
+        
+      }
     
 }
 

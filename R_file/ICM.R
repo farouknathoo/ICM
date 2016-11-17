@@ -97,8 +97,12 @@ mask <- array(1, dim = c(n.x, n.y, n.z))
 neiStruc <- matrix(c(2,2,0,0,
                      0,2,0,0,
                      0,0,0,0), nrow=3, byrow=TRUE)
+# Neighborhood matrix
 neighbors <- getNeighbors(mask, neiStruc)
+
+# Blocks for Chequeboard Updating
 blocks <- getBlocks(mask, nblock=2)
+
 # Get intial state for each vertex from correspoding cube. 
 beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta)
@@ -213,6 +217,10 @@ while (r < R) {
         alpha[l] <- b_alpha_l[l] / ( a_alpha_l[l] + 1)
       }
     alpha_star[,r+1] <- alpha
+    
+    # Update mu_l(t=1) for all l =1, ... K.
+    
+    
 }
 
 

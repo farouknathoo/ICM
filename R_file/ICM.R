@@ -212,15 +212,48 @@ while (r < R) {
     b_alpha_l <- rep(0,4)
     for ( l in 1:K)
       {
-        a_alpha_l[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
-        b_alpha_l[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 1, mu[l,]))^2 )
-        alpha[l] <- b_alpha_l[l] / ( a_alpha_l[l] + 1)
+      a_alpha_l[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
+      b_alpha_l[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 2, mu[l,]))^2 )
+      alpha[l] <- b_alpha_l[l] / ( a_alpha_l[l] + 1)
       }
-    alpha_star[,r+1] <- alpha
+     alpha_star[,r+1] <- alpha
     
     # Update mu_l(t=1) for all l =1, ... K.
-    
-    
+     D_j <- array(0, dim = c(K-1, K-1,P))
+     STD_j <- matrix(0,P,K-1)
+     for (j in 1:P)
+       {
+        if (Z.state[j] != 1)
+          {
+            D_j[, , j][Z.state[j]-1,Z.state[j]-1] <- 1 / alpha[Z.state[j]] 
+          }
+       STD_j[j,] <- t(rep(S[j,1],K-1)) %*% D_j[, , j]  
+       }
+     
+     SD_j <- apply(D_j, 1:2,sum)
+     B_1 <- SD_j + 1/sigma2_a * t(A)%*%A + 1 / sigma2_mu1 * diag(1,nrow = K-1, ncol = K-1)
+     M_1 <- t( ( t(apply(STD_j,2,sum)) + 1/sigma2_a*t(mu[2:K,2]) %*% A) %*% solve(B_1))
+     mu[,1] <- rbind(0, M_1)
+     
+     # Update mu_l(t) for all l =2 , ... K when 1 < t < T,
+     B_2 <- SD_j + 1 / sigma2_a * (t(A)%*%A + diag(1,K-1,K-1))
+     inv_B_2 <- solve(B_2)
+     STD_jt <- matrix(0,P,K-1)
+     time_interval <- seq(2,T-1)
+     for ( t in time_interval)
+       {
+          for (j in 1:P)
+           {
+             STD_jt[j,] <- t(rep(S[j,t],K-1)) %*% D_j[, , j]
+         } 
+         SSTD <- t(apply(STD_jt,2,sum))
+         M_2_1 <- 1/sigma2_a*t(mu[2:K,t+1])%*%A
+         M_2_2 <- 1/sigma2_a*t(mu[2:K,t-1]) %*% t(A) 
+         M_2 <- t((SSTD + M_2_1 + M_2_2) %*% inv_B_2)
+         mu[,t] <- rbind(0,M_2)
+     }
+     
+     #Update mu_l(T) for all l=2, ..., K, when t = T.
 }
 
 

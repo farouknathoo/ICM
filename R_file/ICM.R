@@ -154,7 +154,6 @@ sigma2_a_star <- sigma2_a
 
 vec_A_star <- matrix(0,nrow = (K-1)^2, ncol = R)
 vec_A_star[,1] <- as.vector(A)
-
   
 alpha_star <- matrix(0, nrow = K, ncol = R)
 alpha_star[,1] <- alpha
@@ -254,6 +253,21 @@ while (r < R) {
      }
      
      #Update mu_l(T) for all l=2, ..., K, when t = T.
+     B_3 <- SD_j +1 / sigma2_a*diag(1,K-1,K-1)
+     inv_B_3 <- solve(B_3)
+     STD_jT <- matrix(0,P,K-1)
+     for (j in 1:P)
+     {
+      
+       STD_jT[j,] <- t(rep(S[j,T],K-1)) %*% D_j[, , j]  
+     }
+     SD_j <- apply(D_j, 1:2,sum)
+     M_3 <- t( ( t(apply(STD_jT,2,sum)) + 1/sigma2_a*t(mu[2:K,T-1]) %*% t(A)) %*% inv_B_3)
+     mu[,T] <- rbind(0, M_3)
+     
+     mu_star[,,r+1] <- mu
+     
+     #
 }
 
 

@@ -170,18 +170,20 @@ Z.nv[,1] <- cube.state
 beta_star <- rep(0,R)
 beta_star[1] <- beta
 
+inv_H_M <- solve(H_M)
+inv_H_E <- solve(H_E)
 r <- 1
 
 while (r < R) {
   
     # Update the sigma2_M 
     a_M <- a_M + T*n_M / 2
-    b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S) %*% solve(H_M) %*% (Y_M - X_M %*% S))) + b_M
+    b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S) %*% inv_H_M %*% (Y_M - X_M %*% S))) + b_M
     sigma2_M_star[r+1] <- b_M / (a_M + 1)
     
     # Update the sigma2_E
     a_E <- a_E + T*n_E /2
-    b_E <- 1/2 *sum( diag(t(Y_M - X_M %*% S) %*% solve(H_M) %*% (Y_M - X_M %*% S))) + b_E
+    b_E <- 1/2 *sum( diag(t(Y_M - X_M %*% S) %*% inv_H_E %*% (Y_M - X_M %*% S))) + b_E
     sigma2_E <- b_E / (a_E + 1)
     sigma2_E_star[r+1] <- b_E / (a_E + 1)
     
@@ -258,7 +260,6 @@ while (r < R) {
      STD_jT <- matrix(0,P,K-1)
      for (j in 1:P)
      {
-      
        STD_jT[j,] <- t(rep(S[j,T],K-1)) %*% D_j[, , j]  
      }
      SD_j <- apply(D_j, 1:2,sum)
@@ -267,7 +268,22 @@ while (r < R) {
      
      mu_star[,,r+1] <- mu
      
-     #
+     #Update the ( S_j(1),  S_j(2), . . . ,  S_j(T)) for j = 1, 2, 3, ..., P.
+
+     for (j in 1:P){
+       W_1j <- 1/sigma2_M * t(X_M[,j]) %*%inv_H_M %*% X_M[,j] + 1/sigma2_E*t(X_E[,j]) %*% inv_H_E %*% X_E[,j] + alpha[Z.state[j]]
+       W_2j <- rep(0,T)
+       for (t in 1:T){
+          W_2j[t] <- 1/sigma2_M*( -2*t(Y_M[,t]) %*% inv_H_M %*% X_M[,j] + 2*t(X_M[,-j] %*% S[,t][-j]) %*% inv_H_M %*%X_M[,j] ) + 1/sigma2_E*(-2*t(Y_E[,t]) %*% inv_H_E %*% X_E[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% inv_H_E %*%X_E[,j])
+       }
+       Sigma_S_j <- solve(diag(c(W_1j),nrow = T,ncol = T))
+       mu_sj <- -1/2*Sigma_S_j%*%W_2j
+       S[j,] <- mu_sj
+     }
+     S_star[,,r+1] <- S
+     
+     # Update the labelling of Z. 
+     
 }
 
 

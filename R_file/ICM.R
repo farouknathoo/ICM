@@ -134,7 +134,6 @@ while (t < T)
   t <- t+1
 }
 
-t <-1
 #####get initial values using ridge regression
 # Initial value for S
 Y.start<-rbind(Y_E,Y_M)

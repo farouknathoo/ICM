@@ -66,12 +66,15 @@ for(i in 1:P)
 ####################################################################
 ## Scale the measurement of MEG and EEG.
 
-M <- Y_M / sqrt(1 / n_M* sum(diag(Y_M %*% t(Y_M))))
-E <- Y_E / sqrt(1 / n_E* sum(diag(Y_E %*% t(Y_E))))
+M <- Y_M / sqrt( (1 / n_M)* sum(diag(Y_M %*% t(Y_M))))
+E <- Y_E / sqrt( (1 / n_E)* sum(diag(Y_E %*% t(Y_E))))
 
 X_E <-  X_E / sqrt(1 / n_E* sum(diag(X_E %*% t(X_E))))
 X_M <-  X_M / sqrt(1 / n_M* sum(diag(X_M %*% t(X_M))))
 
+# Centered Scale for X_E and X_M
+X_E <- scale(X_E)
+X_M <- scale(X_M)
 
 ####################################################################
 ####################################################################
@@ -104,13 +107,13 @@ neighbors <- getNeighbors(mask, neiStruc)
 blocks <- getBlocks(mask, nblock=2)
 
 # Get intial state for each vertex from correspoding cube. 
-beta_u  <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta)
 Z.state <- cube.state[vert.Z]
 
 
 # For the variance components 
 sigma2_a <- 1
+# Compute the variance fromt the data.
 sigma2_E <- 100
 sigma2_M <- 100
 alpha <- c(1,1,1.5,2)

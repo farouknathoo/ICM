@@ -191,6 +191,25 @@ inv_H_M <- solve(H_M)
 inv_H_E <- solve(H_E)
 r <- 1
 
+W_1j_C1 <- rep(0,P)
+W_1j_C2 <- rep(0,P)
+H.M <- matrix(0,nrow = n_M,ncol = P)
+H.E <- matrix(0,nrow = n_E,ncol = P)
+W2j_C1 <- matrix(0, nrow = T, ncol = P )
+W2j_C2 <- matrix(0, nrow = T, ncol = P )
+for ( j in 1:P)
+  {
+  H.M[,j] <- inv_H_M %*% X_M[,j] 
+  W_1j_C1[j] <- crossprod(X_M[,j],H.M[,j])
+  H.E[,j] <- inv_H_E %*% X_E[,j]
+  W_1j_C2[j] <- crossprod(X_E[,j],H.E[,j])
+    for(t in 1:T){
+       W2j_C1[,j] <- -2 * crossprod(Y_M[,t], H.M[,j])
+       W2j_C2[,j] <- -2 * crossprod(Y_E[,t], H.E[,j])
+    }
+  }
+ r <- 1
+ 
 while (r < R) {
   
   # Update the sigma2_M 
@@ -293,24 +312,42 @@ while (r < R) {
   mu_star[,,r+1] <- mu
   
   #Update the ( S_j(1),  S_j(2), . . . ,  S_j(T)) for j = 1, 2, 3, ..., P.
+#   
+#   for (j in 1:P){
+#     j=1
+#     t.temp<-proc.time()
+#     W_1j <- 1/sigma2_M * t(X_M[,j]) %*%inv_H_M %*% X_M[,j] + 1/sigma2_E*t(X_E[,j]) %*% inv_H_E %*% X_E[,j] + 1/alpha[Z.state[j]]
+#     W_2j <- rep(0,T)
+#     for (t in 1:T){
+#       W_2j[t] <- 1/sigma2_M*( -2*t(Y_M[,t]) %*% inv_H_M %*% X_M[,j] + 2*t(X_M[,-j] %*% S[,t][-j]) %*% inv_H_M %*%X_M[,j] ) + 1/sigma2_E*(-2*t(Y_E[,t]) %*% inv_H_E %*% X_E[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% inv_H_E %*%X_E[,j])-2*sum(mu[,t]/alpha)
+#     }
+#     Sigma_S_j <- (1/as.numeric(W_1j))*diag(1,nrow = T,ncol = T)
+#     mu_sj <- -1/2*Sigma_S_j%*%W_2j
+#     S[j,] <- mu_sj
+#     t.temp<-proc.time()-t.temp
+#   }
+#   S_star[,,r+1] <- S
   
-  for (j in 1:P){
-    j=1
-    t.temp<-proc.time()
-    W_1j <- 1/sigma2_M * t(X_M[,j]) %*%inv_H_M %*% X_M[,j] + 1/sigma2_E*t(X_E[,j]) %*% inv_H_E %*% X_E[,j] + 1/alpha[Z.state[j]]
-    W_2j <- rep(0,T)
-    for (t in 1:T){
-      W_2j[t] <- 1/sigma2_M*( -2*t(Y_M[,t]) %*% inv_H_M %*% X_M[,j] + 2*t(X_M[,-j] %*% S[,t][-j]) %*% inv_H_M %*%X_M[,j] ) + 1/sigma2_E*(-2*t(Y_E[,t]) %*% inv_H_E %*% X_E[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% inv_H_E %*%X_E[,j])-2*sum(mu[,t]/alpha)
+    
+    for (j in 1:P){
+      j=1
+      t.temp<-proc.time()
+      W_1j <- 1/sigma2_M * W_1j_C1[j] + 1/sigma2_E*W_1j_C2[j] + 1/alpha[Z.state[j]]
+      W_2j <- rep(0,T)
+      for (t in 1:T){
+        W_2j[t] <- -2/sigma2_M*( t(W2j_C1[,j]) + 2*t(X_M[,-j] %*% S[,t][-j]) %*% H.M[,j])  + -2/sigma2_E*(W2j_C2[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% H.E[,j] )-2*sum(mu[,t]/alpha)
+      }
+      Sigma_S_j <- (1/as.numeric(W_1j))*diag(1,nrow = T,ncol = T)
+      mu_sj <- -1/2* Sigma_S_j %*%W_2j
+      S[j,] <- mu_sj
+      t.temp<-proc.time()-t.temp
     }
-    Sigma_S_j <- (1/as.numeric(W_1j))*diag(1,nrow = T,ncol = T)
-    mu_sj <- -1/2*Sigma_S_j%*%W_2j
-    S[j,] <- mu_sj
-    t.temp<-proc.time()-t.temp
-  }
-  S_star[,,r+1] <- S
+    S_star[,,r+1] <- S
+  
+  
   
   # Update the labelling of Z. 
-  
+ 
 }
 
 

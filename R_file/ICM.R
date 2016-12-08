@@ -69,17 +69,18 @@ for(i in 1:P)
 ####################################################################
 ## Scale the measurement of MEG and EEG.
 #YIN:crossprod can speed this up
-M <- Y_M / sqrt((1 / n_M)* sum(diag(Y_M %*% t(Y_M))))
-E <- Y_E / sqrt((1 / n_E)* sum(diag(Y_E %*% t(Y_E))))
+#The following two lines are used for REAL but not simulated data
+#Y_M <- Y_M / sqrt((1 / n_M)* sum(diag(Y_M %*% t(Y_M))))
+#Y_E <- Y_E / sqrt((1 / n_E)* sum(diag(Y_E %*% t(Y_E))))
 
 X_E <-  X_E / sqrt((1 / n_E)* sum(diag(X_E %*% t(X_E))))
 X_M <-  X_M / sqrt((1 / n_M)* sum(diag(X_M %*% t(X_M))))
 
-x.sd <- apply(rbind(X_E,X_M),2,sd)
-X <- scale(rbind(X_E,X_M))
-
-X_E <- X[1:n_E,]
-X_M <- X[(n_E+1):(n_E+n_M),]
+# x.sd <- apply(rbind(X_E,X_M),2,sd)
+# X <- scale(rbind(X_E,X_M))
+# 
+# X_E <- X[1:n_E,]
+# X_M <- X[(n_E+1):(n_E+n_M),]
 
 
 ####################################################################
@@ -135,18 +136,13 @@ while (t < T)
 }
 
 #####get initial values using ridge regression
-# Initial value for S
+# Initial value for S based on Moore-Penrose Inverse
 Y.start<-rbind(Y_E,Y_M)
 X.start<-rbind(X_E,X_M)
-X.int<-matrix(1,nrow(Y.start),1)
-S <- matrix(0, nrow = P, ncol = T)
-for (t in 1: T)
-{
-  temp<-bigRR(y=Y.start[,t],X=X.int,Z=X.start,lambda=NULL,only.estimates=FALSE)
-  S[,t] <- diag(1/x.sd,nrow = P,ncol = P)%*%temp$u
-}
+X.start.mpinv<-ginv(X.start)
+S <- X.start.mpinv%*%Y.start
 
-
+# S<-matrix(0,nrow=P,ncol=T)
 # for (t in 1:T)
 # {
 #   for (j in 1:P)
@@ -157,11 +153,13 @@ for (t in 1: T)
 #                   rnorm(1, mu[3,t],sqrt(alpha[3])),
 #                   rnorm(1, mu[4,t],sqrt(alpha[4])))
 #     S[j,t] <- mix.comp[Z.state[j]]
-#   }  
+#   }
 # }
 
+
+
 ## ICM updating algorithm and intial set-up.
-R  <- 100
+R  <- 5
 sigma2_M_star <- rep(0,R)
 sigma2_M_star[1]  <- sigma2_M
 
@@ -180,8 +178,8 @@ alpha_star[,1] <- alpha
 mu_star <- array(0,dim = c(K,T,R))
 mu_star[, , 1] <- mu
 
-S_star <- array(0,dim = c(P, T, R))
-S_star[, , 1] <- S
+#S_star <- array(0,dim = c(P, T, R))
+#S_star[, , 1] <- S
 
 Z.nv <- matrix(0,nrow = n.v, ncol = R)
 Z.nv[,1] <- cube.state
@@ -196,21 +194,24 @@ r <- 1
 while (r < R) {
   
   # Update the sigma2_M 
-  a_M <- a_M + T*n_M / 2
-  b_M <- 1/2 * sum( diag(t(Y_M - X_M %*% S) %*% inv_H_M %*% (Y_M - X_M %*% S))) + b_M
-  sigma2_M_star[r+1] <- b_M / (a_M + 1)
+  a_M_star <- a_M + T*n_M / 2
+  temp <- Y_M - X_M %*% S
+  b_M_star <- 1/2 * sum( diag(crossprod(temp,inv_H_M%*%temp))) + b_M
+  
+  sigma2_M_star[r+1] <- b_M_star / (a_M_star + 1)
+  
   
   # Update the sigma2_E
-  a_E <- a_E + T*n_E /2
-  b_E <- 1/2 *sum( diag(t(Y_M - X_M %*% S) %*% inv_H_E %*% (Y_M - X_M %*% S))) + b_E
-  sigma2_E <- b_E / (a_E + 1)
-  sigma2_E_star[r+1] <- b_E / (a_E + 1)
+  a_E_star <- a_E + T*n_E /2
+  temp <- Y_E - X_E %*% S
+  b_E_star <- 1/2 * sum( diag(crossprod(temp,inv_H_E%*%temp))) + b_E
+  sigma2_E_star[r+1] <- b_E_star / (a_E_star + 1)
   
   # Update the  sigma2_a
-  a_a <- a_a + (T -1) * (K - 1) / 2
-  b_a <- b_a + 1/2 * sum( diag( t( mu[2:K, 2:T]- A%*%mu[2:K,1:T-1]) %*% (mu[2:K, 2:T]  - A %*%mu[2:K, 1:T-1])))
-  sigma2_a <- b_a / (a_a + 1)
-  sigma2_a_star[r+1] <- b_a / (a_a + 1)
+  a_a_star <- a_a + (T -1) * (K - 1) / 2
+  temp <- mu[2:K, 2:T]- A%*%mu[2:K,1:T-1]
+  b_a_star <- 1/2 * sum( diag( crossprod(temp))) + b_a
+  sigma2_a_star[r+1] <- b_a_star / (a_a_star + 1)
   
   # Update the vec(A)
   sKr_t <- 0
@@ -218,25 +219,29 @@ while (r < R) {
   for (t in 2:T)
   {
     Kr_t <- kronecker( t(mu[2:K,t - 1]), diag(1, K-1))
-    sKr_t <-  sKr_t + t(Kr_t) %*% Kr_t
-    vc <- vc  + t(mu[2:K,t]) %*% Kr_t
+    sKr_t <-  sKr_t + crossprod(Kr_t)#t(Kr_t) %*% Kr_t 
+    vc <- vc  + crossprod(mu[2:K,t],Kr_t)#t(mu[2:K,t]) %*% Kr_t
   }
   
-  C_1 <- 1 / sigma2_A * diag(1,(K-1)^2) + 1/sigma2_a * sKr_t
-  V_1 <- t( 1/sigma2_a * vc %*% solve(C_1))
+  C_1 <- (1 / sigma2_A) * diag(1,(K-1)^2) + (1/sigma2_a) * sKr_t
+  V_1 <- t( (1/sigma2_a) * vc %*% solve(C_1))
   A <- matrix(V_1, nrow = K-1)
   vec_A_star[,r+1] <- as.vector(A)
   
   # Update for each alpha_l, for each alpha_l, it's a inverse-gamma distribution.
-  a_alpha_l <- rep(0,4)
-  b_alpha_l <- rep(0,4)
+  #  t.temp<-proc.time()
+  a_alpha_l_star <- rep(0,K)
+  b_alpha_l_star <- rep(0,K)
   for ( l in 1:K)
   {
-    a_alpha_l[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
-    b_alpha_l[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 2, mu[l,]))^2 )
-    alpha[l] <- b_alpha_l[l] / ( a_alpha_l[l] + 1)
+    a_alpha_l_star[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
+    b_alpha_l_star[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 2, mu[l,]))^2 )
+    alpha[l] <- b_alpha_l_star[l] / ( a_alpha_l_star[l] + 1)
   }
   alpha_star[,r+1] <- alpha
+  #  t.temp<-proc.time()-t.temp
+  
+  
   
   # Update mu_l(t=1) for all l =1, ... K.
   D_j <- array(0, dim = c(K-1, K-1,P))
@@ -253,7 +258,7 @@ while (r < R) {
   SD_j <- apply(D_j, 1:2,sum)
   B_1 <- SD_j + 1/sigma2_a * t(A)%*%A + 1 / sigma2_mu1 * diag(1,nrow = K-1, ncol = K-1)
   M_1 <- t( ( t(apply(STD_j,2,sum)) + 1/sigma2_a*t(mu[2:K,2]) %*% A) %*% solve(B_1))
-  mu[,1] <- rbind(0, M_1)
+  mu[2:K,1] <- M_1
   
   # Update mu_l(t) for all l =2 , ... K when 1 < t < T,
   B_2 <- SD_j + 1 / sigma2_a * (t(A)%*%A + diag(1,K-1,K-1))
@@ -281,23 +286,26 @@ while (r < R) {
   {
     STD_jT[j,] <- t(rep(S[j,T],K-1)) %*% D_j[, , j]  
   }
-  SD_j <- apply(D_j, 1:2,sum)
+  # SD_j <- apply(D_j, 1:2,sum)
   M_3 <- t( ( t(apply(STD_jT,2,sum)) + 1/sigma2_a*t(mu[2:K,T-1]) %*% t(A)) %*% inv_B_3)
-  mu[,T] <- rbind(0, M_3)
+  mu[2:K,T] <- M_3
   
   mu_star[,,r+1] <- mu
   
   #Update the ( S_j(1),  S_j(2), . . . ,  S_j(T)) for j = 1, 2, 3, ..., P.
   
   for (j in 1:P){
-    W_1j <- 1/sigma2_M * t(X_M[,j]) %*%inv_H_M %*% X_M[,j] + 1/sigma2_E*t(X_E[,j]) %*% inv_H_E %*% X_E[,j] + alpha[Z.state[j]]
+    j=1
+    t.temp<-proc.time()
+    W_1j <- 1/sigma2_M * t(X_M[,j]) %*%inv_H_M %*% X_M[,j] + 1/sigma2_E*t(X_E[,j]) %*% inv_H_E %*% X_E[,j] + 1/alpha[Z.state[j]]
     W_2j <- rep(0,T)
     for (t in 1:T){
-      W_2j[t] <- 1/sigma2_M*( -2*t(Y_M[,t]) %*% inv_H_M %*% X_M[,j] + 2*t(X_M[,-j] %*% S[,t][-j]) %*% inv_H_M %*%X_M[,j] ) + 1/sigma2_E*(-2*t(Y_E[,t]) %*% inv_H_E %*% X_E[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% inv_H_E %*%X_E[,j])
+      W_2j[t] <- 1/sigma2_M*( -2*t(Y_M[,t]) %*% inv_H_M %*% X_M[,j] + 2*t(X_M[,-j] %*% S[,t][-j]) %*% inv_H_M %*%X_M[,j] ) + 1/sigma2_E*(-2*t(Y_E[,t]) %*% inv_H_E %*% X_E[,j] + 2*t( X_E[,-j] %*% S[,t][-j]) %*% inv_H_E %*%X_E[,j])-2*sum(mu[,t]/alpha)
     }
-    Sigma_S_j <- solve(diag(c(W_1j),nrow = T,ncol = T))
+    Sigma_S_j <- (1/as.numeric(W_1j))*diag(1,nrow = T,ncol = T)
     mu_sj <- -1/2*Sigma_S_j%*%W_2j
     S[j,] <- mu_sj
+    t.temp<-proc.time()-t.temp
   }
   S_star[,,r+1] <- S
   

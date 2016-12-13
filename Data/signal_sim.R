@@ -1,3 +1,14 @@
+library(rgl)
+library(R.matlab)
+library(scatterplot3d)
+library(MASS)
+library(PottsUtils)
+library(MCMCpack)
+
+#this seems unstable so set it externally so that it works on your environment
+#set it so that the current directory is ICM
+#setwd(dir = "../../ICM/")
+
 signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_A, sigma2_u1,SNR){
   # The main working directory is always under "./ICM"
   # R code for Bayesian source Reconstruction for MEG and EEG Data.
@@ -11,15 +22,9 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # n_M is the number of MEG sensors. 
   # beta_U is the phase transition value. By default, it will be computed from beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
   # SNR is the measurement noise ratio. 
-  library(rgl)
-  library(R.matlab)
-  library(scatterplot3d)
-  library(MASS)
-  library(PottsUtils)
-  library(MCMCpack)
   
   # Vertices data is obtained from the MATLAB as a mat file named "vert".
-  setwd(dir = "~/ICM/")
+  
   data <- readMat("./Data/vert.mat")
   
   vert.data <- data.frame(x = data$vert[,1],y = data$vert[,2],z = data$vert[,3])
@@ -43,13 +48,13 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   z.cut <- seq(-49,78+len.cubes,len.cubes)
   # Numeber of intervals on z axis
   n.z <- length(z.cut) - 1
-
+  
   # total number of voxels:
   n.v <- n.x*n.y*n.z
   
   # For each vertex, finding which intervals its x, y, z in. 
   vl <- cbind(findInterval(sub.vert$x,x.cut),findInterval(sub.vert$y,y.cut),findInterval(sub.vert$z,z.cut))
-
+  
   # Mapping the indices into the labelling of each cube. 
   vert.Z <- rep(NA, P)
   for(i in 1:P)
@@ -58,6 +63,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   }
   
   # Connectivity Matrix 
+  #YIN: REMOVE THIS AND HAVE A AS AN ARGUMENT TO THE FUNCTION
   A <- diag(sample(seq(0.9,0.95,0.01),K-1 ))
   
   M <- matrix(0, nrow = n_M, ncol = T)
@@ -81,16 +87,16 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   title(main = "Latent State Dynamics")
   
   if(is.null(beta_u)){
-  # critical value for beta is 0.6313259 when K = 4
-  beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
+    # critical value for beta is 0.6313259 when K = 4
+    beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
   }
   # Set the variances of mixture components
   alpha <- c(apply(mu, 1, var))*0.10
   alpha[1] <- mean(alpha[2:4])
   
   # Forward Operator
-  X_M  <- matrix(replicate(n_M*P,rnorm(1,0,1)), ncol=P,byrow = T)
-  X_E  <- matrix(replicate(n_E*P,rnorm(1,0,1)), ncol=P,byrow = T)
+  X_M  <- matrix(replicate(n_M*P,rnorm(1,0,sqrt(.1))), ncol=P,byrow = T)
+  X_E  <- matrix(replicate(n_E*P,rnorm(1,0,sqrt(.1))), ncol=P,byrow = T)
   
   
   # Generate random samples from a Potts model
@@ -123,9 +129,10 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
     #     eps_e <- mvrnorm( n = 1, mu = rep(0,n_E), Sigma = diag(x = sigma2_E, ncol = n_M, nrow = n_M) ) 
     
     # Mapping the state to corresponding components.
-    for (j in 1:1000)
+    for (j in 1:P)
     {
       # Mixture Components
+      #YIN: NEED TO CHANGE THIS FOR GENERAL K
       mix.comp <- c(rnorm(1, mu[1,t],sqrt(alpha[1])),
                     rnorm(1, mu[2,t],sqrt(alpha[2])),
                     rnorm(1, mu[3,t],sqrt(alpha[3])),
@@ -149,11 +156,11 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   
   
   # Add the measurement noise into the signals
-  sigma2_M <- SNR*mean(apply(M, 2, var))
-  sigma2_E <- SNR*mean(apply(E, 2, var))
+  sigma2_M <- SNR*mean(apply(M, 1, var))
+  sigma2_E <- SNR*mean(apply(E, 1, var))
   
-  eps_m  <- mvrnorm( n = T, mu = rep(0,n_M), Sigma = diag(x = sigma2_M, ncol = n_M, nrow = n_M) )
-  eps_e <- mvrnorm( n = T, mu = rep(0,n_E), Sigma = diag(x = sigma2_E, ncol = n_M, nrow = n_M) ) 
+  eps_m  <- t(mvrnorm( n = T, mu = rep(0,n_M), Sigma = diag(x = sigma2_M, ncol = n_M, nrow = n_M) ))
+  eps_e <- t(mvrnorm( n = T, mu = rep(0,n_E), Sigma = diag(x = sigma2_E, ncol = n_E, nrow = n_E) ) )
   
   M_noise <- M + eps_m
   E_noise <- E + eps_e
@@ -177,4 +184,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   save(sub.vert,file = "./Data/sub_vert.RData")
   save(S, file = "./Data/S.RData")
 }
- 
+
+
+
+#P=1000;K=4;T=200;n_E=300;n_M=250;c_length=20;sigma2_a=1;sigma2_A=1;sigma2_u1=1;SNR=0.1;beta_u=NULL

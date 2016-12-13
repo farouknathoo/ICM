@@ -181,10 +181,21 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   save(H_E,file = "./Data/H_E.RData")  
   save(X_E,file = "./Data/X_E.RData")
   save(X_M,file = "./Data/X_M.RData")
+  save(cube.state,file = "./Data/cube_state.RData")
+  save(A,file = "./Data/A.RData")
+  save(sigma2_E,file = "./Data/sigma2_E.RData")
+  save(sigma2_M,file = "./Data/sigma2_M.RData")
+  save(sigma2_a,file = "./Data/sigma2_a.RData")
+  save(mu,file = "./Data/mu.RData")
   save(sub.vert,file = "./Data/sub_vert.RData")
   save(S, file = "./Data/S.RData")
 }
 
 
 
-#P=1000;K=4;T=200;n_E=300;n_M=250;c_length=20;sigma2_a=1;sigma2_A=1;sigma2_u1=1;SNR=0.1;beta_u=NULL
+# P=1000;K=4;T=200;n_E=300;n_M=250;c_length=20;sigma2_a=1;sigma2_A=1;sigma2_u1=1;SNR=0.1;beta_u=NULL
+
+# signal_sim(P = 1000, n_E = 300,K = 4,T = 200,n_M = 250,beta_u = NULL,c_length = 20,sigma2_a = 1,sigma2_A = 1,sigma2_u1 = 1,SNR = 0.1)
+
+
+

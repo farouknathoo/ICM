@@ -28,6 +28,8 @@ load("./Data/sigma2_E.RData")
 load("./Data/sigma2_M.RData")
 load("./Data/sigma2_a.RData")
 load("./Data/mu.RData")
+load("./Data/beta.RData")
+load("./Data/alpha.RData")
 
 # Built-in data 
 n_M  <- dim(Y_M)[1] #NUMBER OF MEG SENSORS
@@ -35,7 +37,15 @@ n_E  <- dim(Y_E)[1] #NUMBER OF EEG SENSORS
 T <-  dim(Y_M)[2] #NUMBER OF TIME POINTS
 P <- dim(sub.vert)[1] #NUMBER OF BRAIN LOCATIONS
 K <- 4 #NUMBER OF MIXTURE COMPONENTS (MESO-STATES)
-true.S <- S #STORE THE TRUE VALUES
+true.S <- S ; S <- NULL #STORE THE TRUE VALUES
+true.mu <- mu; mu <- NULL
+true.A <- A; A <- NULL
+true.sigma2_E <- sigma2_E; sigma2_E <- NULL
+true.sigma2_M <- sigma2_M; sigma2_M <- NULL
+true.sigma2_a <- sigma2_a; sigma2_a <- NULL
+true.cube.state <- cube.state; cube.state <- NULL
+true.beta <- beta_u; beta_u <- NULL
+true.alpha <- alpha; alpha <- NULL
 
 # Initial Number of voxels - this input will be modified
 n.v <- 400
@@ -99,8 +109,12 @@ beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 ###################################################################
 ## Initializing values
 beta_u_eps<-0.05
-beta <- runif(1,beta_u-beta_u_eps,beta_u)
-A <- diag(sample(seq(0.9,0.95,0.01),K-1))
+#beta <- runif(1,beta_u-beta_u_eps,beta_u)
+beta <- true.beta
+
+#A <- diag(sample(seq(0.9,0.95,0.01),K-1))
+A <- true.A
+
 # 3D array specifying cubes.
 mask <- array(1, dim = c(n.x, n.y, n.z))
 
@@ -117,34 +131,43 @@ blocks <- getBlocks(mask, nblock=2)
 # Get intial state for each vertex from correspoding cube. 
 cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta)
 cube.state <- as.vector(cube.state)
+cube.state <- true.cube.state
 Z.state <- cube.state[vert.Z]
 
-
 # For the variance components 
-sigma2_a <- b_a/(a_a+1) #initialize at prior mode
-sigma2_E <- median(apply(Y_E,1,var))*0.1 #allocate 10% of median data variance to noise
-sigma2_M <- median( apply(Y_M,1,var))*0.1
-alpha <- rep(b_alpha/(a_alpha+1),K)
+#sigma2_a <- b_a/(a_a+1) #initialize at prior mode
+sigma2_a <- true.sigma2_a
 
-# Initial values for mu
-mu <- matrix(0, nrow = K, ncol = T)
-# when t = 1
-t <- 1 
-mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_mu1*1, ncol = K-1, nrow = K-1))
-while (t < T)
-{
-  mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))
-  t <- t+1
-}
+#sigma2_E <- median(apply(Y_E,1,var))*0.1 #allocate 10% of median data variance to noise
+sigma2_E <- true.sigma2_E
+#sigma2_M <- median( apply(Y_M,1,var))*0.1
+sigma2_M <- true.sigma2_M
+
+#alpha <- rep(b_alpha/(a_alpha+1),K)
+alpha <- true.alpha
+
+# # Initial values for mu
+# mu <- matrix(0, nrow = K, ncol = T)
+# # when t = 1
+# t <- 1 
+# mu[2:K,1] <- mvrnorm(n = 1, mu = rep(0,K-1), diag(x = sigma2_mu1*1, ncol = K-1, nrow = K-1))
+# while (t < T)
+# {
+#   mu[2:K,t+1] <- mvrnorm(n = 1, mu = A%*% mu[2:K,t], Sigma = diag(x = sigma2_a*1, ncol = K-1, nrow = K-1))
+#   t <- t+1
+# }
+
+mu <- true.mu
 
 #####get initial values for sources use either:
-# #Moore-Penrose Inverse
+# # #Moore-Penrose Inverse
 Y.start<-rbind(Y_E,Y_M)
 X.start<-rbind(X_E,X_M)
 X.start.mpinv<-ginv(X.start)
 S <- X.start.mpinv%*%Y.start
 
 # #simulate from the assumed prior
+#S<-matrix(rnorm(P*T,mean = 0,sd = 1),nrow=P,ncol=T)
 # S<-matrix(0,nrow=P,ncol=T)
 # for (t in 1:T)
 # {
@@ -159,10 +182,11 @@ S <- X.start.mpinv%*%Y.start
 #   }
 # }
 
+cor(c(true.S),c(S))
 
 
 ## ICM updating algorithm and intial set-up.
-R  <- 15 #NUMBER OF ICM ITERATIONS TO RUN
+R  <- 3 #NUMBER OF ICM ITERATIONS TO RUN
 
 ##STORE VALUES
 sigma2_M_star <- rep(0,R)
@@ -246,107 +270,109 @@ HP_beta <- function(beta,cube.state,n.v,neighbors)
 }
 
 r <- 1
+cor(c(true.S),c(S))
+
 while (r < R) {
   time.iter<-proc.time()
-  # Update the sigma2_M 
-  a_M_star <- a_M + T*n_M / 2
-  temp <- Y_M - X_M %*% S
-  b_M_star <- 1/2 * sum( diag(crossprod(temp,inv_H_M%*%temp))) + b_M
-  sigma2_M_star[r+1] <- b_M_star / (a_M_star + 1)
-  sigma2_M <- b_M_star / (a_M_star + 1)
-  
-  # Update the sigma2_E
-  a_E_star <- a_E + T*n_E /2
-  temp <- Y_E - X_E %*% S
-  b_E_star <- 1/2 * sum( diag(crossprod(temp,inv_H_E%*%temp))) + b_E
-  sigma2_E_star[r+1] <- b_E_star / (a_E_star + 1)
-  sigma2_E <- b_E_star / (a_E_star + 1)
-  
-  # Update the  sigma2_a
-  a_a_star <- a_a + (T -1) * (K - 1) / 2
-  temp <- mu[2:K, 2:T]- A%*%mu[2:K,1:T-1]
-  b_a_star <- 1/2 * sum( diag( crossprod(temp))) + b_a
-  sigma2_a_star[r+1] <- b_a_star / (a_a_star + 1)
-  sigma2_a <- b_a_star / (a_a_star + 1)
-  
-  
-  # Update the vec(A)
-  sKr_t <- 0
-  vc <- 0
-  for (t in 2:T)
-  {
-    Kr_t <- kronecker( t(mu[2:K,t - 1]), diag(1, K-1))
-    sKr_t <-  sKr_t + crossprod(Kr_t)#t(Kr_t) %*% Kr_t 
-    vc <- vc  + crossprod(mu[2:K,t],Kr_t)#t(mu[2:K,t]) %*% Kr_t
-  }
-  
-  C_1 <- (1 / sigma2_A) * diag(1,(K-1)^2) + (1/sigma2_a) * sKr_t
-  V_1 <- t( (1/sigma2_a) * vc %*% solve(C_1))
-  A <- matrix(V_1, nrow = K-1)
-  vec_A_star[,r+1] <- as.vector(A)
-  
-  # Update for each alpha_l, for each alpha_l, it's a inverse-gamma distribution.
-  #  t.temp<-proc.time()
-  a_alpha_l_star <- rep(0,K)
-  b_alpha_l_star <- rep(0,K)
-  for ( l in 1:K)
-  {
-    a_alpha_l_star[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
-    b_alpha_l_star[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 2, mu[l,]))^2 )
-    alpha[l] <- b_alpha_l_star[l] / ( a_alpha_l_star[l] + 1)
-  }
-  alpha_star[,r+1] <- alpha
-  #  t.temp<-proc.time()-t.temp
-  
-  # Update mu_l(t=1) for all l =1, ... K.
-  D_j <- array(0, dim = c(K-1, K-1,P))
-  STD_j <- matrix(0,P,K-1)
-  for (j in 1:P)
-  {
-    if (Z.state[j] != 1)
-    {
-      D_j[, , j][Z.state[j]-1,Z.state[j]-1] <- 1 / alpha[Z.state[j]] 
-    }
-    STD_j[j,] <- t(rep(S[j,1],K-1)) %*% D_j[, , j]  
-  }
-  
-  SD_j <- apply(D_j, 1:2,sum)
-  B_1 <- SD_j + 1/sigma2_a * t(A)%*%A + 1 / sigma2_mu1 * diag(1,nrow = K-1, ncol = K-1)
-  M_1 <- t( ( t(apply(STD_j,2,sum)) + 1/sigma2_a*t(mu[2:K,2]) %*% A) %*% solve(B_1))
-  mu[2:K,1] <- M_1
-  
-  # Update mu_l(t) for all l =2 , ... K when 1 < t < T,
-  B_2 <- SD_j + 1 / sigma2_a * (t(A)%*%A + diag(1,K-1,K-1))
-  inv_B_2 <- solve(B_2)
-  STD_jt <- matrix(0,P,K-1)
-  time_interval <- seq(2,T-1)
-  for ( t in time_interval)
-  {
-    for (j in 1:P)
-    {
-      STD_jt[j,] <- t(rep(S[j,t],K-1)) %*% D_j[, , j]
-    } 
-    SSTD <- t(apply(STD_jt,2,sum))
-    M_2_1 <- 1/sigma2_a*t(mu[2:K,t+1])%*%A
-    M_2_2 <- 1/sigma2_a*t(mu[2:K,t-1]) %*% t(A) 
-    M_2 <- t((SSTD + M_2_1 + M_2_2) %*% inv_B_2)
-    mu[,t] <- rbind(0,M_2)
-  }
-  
-  #Update mu_l(T) for all l=2, ..., K, when t = T.
-  B_3 <- SD_j +1 / sigma2_a*diag(1,K-1,K-1)
-  inv_B_3 <- solve(B_3)
-  STD_jT <- matrix(0,P,K-1)
-  for (j in 1:P)
-  {
-    STD_jT[j,] <- t(rep(S[j,T],K-1)) %*% D_j[, , j]  
-  }
+  # # Update the sigma2_M 
+  # a_M_star <- a_M + T*n_M / 2
+  # temp <- Y_M - X_M %*% S
+  # b_M_star <- 1/2 * sum( diag(crossprod(temp,inv_H_M%*%temp))) + b_M
+  # sigma2_M_star[r+1] <- b_M_star / (a_M_star + 1)
+  # sigma2_M <- b_M_star / (a_M_star + 1)
+  # 
+  # # Update the sigma2_E
+  # a_E_star <- a_E + T*n_E /2
+  # temp <- Y_E - X_E %*% S
+  # b_E_star <- 1/2 * sum( diag(crossprod(temp,inv_H_E%*%temp))) + b_E
+  # sigma2_E_star[r+1] <- b_E_star / (a_E_star + 1)
+  # sigma2_E <- b_E_star / (a_E_star + 1)
+  # 
+  # # Update the  sigma2_a
+  # a_a_star <- a_a + (T -1) * (K - 1) / 2
+  # temp <- mu[2:K, 2:T]- A%*%mu[2:K,1:T-1]
+  # b_a_star <- 1/2 * sum( diag( crossprod(temp))) + b_a
+  # sigma2_a_star[r+1] <- b_a_star / (a_a_star + 1)
+  # sigma2_a <- b_a_star / (a_a_star + 1)
+  # 
+  # 
+  # # Update the vec(A)
+  # sKr_t <- 0
+  # vc <- 0
+  # for (t in 2:T)
+  # {
+  #   Kr_t <- kronecker( t(mu[2:K,t - 1]), diag(1, K-1))
+  #   sKr_t <-  sKr_t + crossprod(Kr_t)#t(Kr_t) %*% Kr_t 
+  #   vc <- vc  + crossprod(mu[2:K,t],Kr_t)#t(mu[2:K,t]) %*% Kr_t
+  # }
+  # 
+  # C_1 <- (1 / sigma2_A) * diag(1,(K-1)^2) + (1/sigma2_a) * sKr_t
+  # V_1 <- t( (1/sigma2_a) * vc %*% solve(C_1))
+  # A <- matrix(V_1, nrow = K-1)
+  # vec_A_star[,r+1] <- as.vector(A)
+  # 
+  # # Update for each alpha_l, for each alpha_l, it's a inverse-gamma distribution.
+  # #  t.temp<-proc.time()
+  # a_alpha_l_star <- rep(0,K)
+  # b_alpha_l_star <- rep(0,K)
+  # for ( l in 1:K)
+  # {
+  #   a_alpha_l_star[l] <- a_alpha + 1/2 * T * sum(Z.state == l)
+  #   b_alpha_l_star[l] <- b_alpha + 1/2 * sum ( (sweep(S[which(Z.state == l),], 2, mu[l,]))^2 )
+  #   alpha[l] <- b_alpha_l_star[l] / ( a_alpha_l_star[l] + 1)
+  # }
+  # alpha_star[,r+1] <- alpha
+  # #  t.temp<-proc.time()-t.temp
+  # 
+  # # Update mu_l(t=1) for all l =1, ... K.
+  # D_j <- array(0, dim = c(K-1, K-1,P))
+  # STD_j <- matrix(0,P,K-1)
+  # for (j in 1:P)
+  # {
+  #   if (Z.state[j] != 1)
+  #   {
+  #     D_j[, , j][Z.state[j]-1,Z.state[j]-1] <- 1 / alpha[Z.state[j]] 
+  #   }
+  #   STD_j[j,] <- t(rep(S[j,1],K-1)) %*% D_j[, , j]  
+  # }
+  # 
   # SD_j <- apply(D_j, 1:2,sum)
-  M_3 <- t( ( t(apply(STD_jT,2,sum)) + 1/sigma2_a*t(mu[2:K,T-1]) %*% t(A)) %*% inv_B_3)
-  mu[2:K,T] <- M_3
-  
-  mu_star[,,r+1] <- mu
-  
+  # B_1 <- SD_j + 1/sigma2_a * t(A)%*%A + 1 / sigma2_mu1 * diag(1,nrow = K-1, ncol = K-1)
+  # M_1 <- t( ( t(apply(STD_j,2,sum)) + 1/sigma2_a*t(mu[2:K,2]) %*% A) %*% solve(B_1))
+  # mu[2:K,1] <- M_1
+  # 
+  # # Update mu_l(t) for all l =2 , ... K when 1 < t < T,
+  # B_2 <- SD_j + 1 / sigma2_a * (t(A)%*%A + diag(1,K-1,K-1))
+  # inv_B_2 <- solve(B_2)
+  # STD_jt <- matrix(0,P,K-1)
+  # time_interval <- seq(2,T-1)
+  # for ( t in time_interval)
+  # {
+  #   for (j in 1:P)
+  #   {
+  #     STD_jt[j,] <- t(rep(S[j,t],K-1)) %*% D_j[, , j]
+  #   } 
+  #   SSTD <- t(apply(STD_jt,2,sum))
+  #   M_2_1 <- 1/sigma2_a*t(mu[2:K,t+1])%*%A
+  #   M_2_2 <- 1/sigma2_a*t(mu[2:K,t-1]) %*% t(A) 
+  #   M_2 <- t((SSTD + M_2_1 + M_2_2) %*% inv_B_2)
+  #   mu[,t] <- rbind(0,M_2)
+  # }
+  # 
+  # #Update mu_l(T) for all l=2, ..., K, when t = T.
+  # B_3 <- SD_j +1 / sigma2_a*diag(1,K-1,K-1)
+  # inv_B_3 <- solve(B_3)
+  # STD_jT <- matrix(0,P,K-1)
+  # for (j in 1:P)
+  # {
+  #   STD_jT[j,] <- t(rep(S[j,T],K-1)) %*% D_j[, , j]  
+  # }
+  # # SD_j <- apply(D_j, 1:2,sum)
+  # M_3 <- t( ( t(apply(STD_jT,2,sum)) + 1/sigma2_a*t(mu[2:K,T-1]) %*% t(A)) %*% inv_B_3)
+  # mu[2:K,T] <- M_3
+  # 
+  # mu_star[,,r+1] <- mu
+  # 
   #Update the ( S_j(1),  S_j(2), . . . ,  S_j(T)) for j = 1, 2, 3, ..., P.
   
   #OLD VERSION WITH NO VECTORIZATION
@@ -378,64 +404,65 @@ while (r < R) {
   }
   #S_star[,,r+1] <- S
   
-  
-  #THIS NEEDS TO BE CHECKED CAREFULLY BY YIN - WE WERE TIRED WHEN WE FINISHED IT
-  # Update the labelling of Z.
-  P.Z <- matrix(0, nrow = n.v,ncol = K)
-  n_r <- rep(0,n.v)
-  n_r.index <- as.numeric(names(table(vert.Z)))
-  n_r.values <- as.vector(table(vert.Z))
-  n_r[n_r.index] <- n_r.values
-  for (v in 1:n.v)
-  {
-    for (h in 1:K)
-    {
-      log.term1 <- (-T*n_r[v]/2)*log(alpha[h])
-      
-      if (n_r[v] == 0)
-      {
-        log.term2 <- 0
-      }
-      else
-      {
-        if(n_r[v] ==1)
-        {
-          S.term2 <- t(S[which(vert.Z == v),])
-        }
-        else
-        {
-          S.term2 <- S[which(vert.Z == v),]
-        }
-        log.term2 <- sum ((sweep(S.term2, 2, mu[h,]))^2)/ (2*alpha[h]) 
-      }
-      term3.neighbors <-neighbors[v,neighbors[v,] != (n.v+1)]
-      log.term3 <- 4*beta*sum(cube.state[term3.neighbors] ==h)
-      
-      term4.temp <- neighbors[term3.neighbors,]
-      term4.temp <- replace(term4.temp,term4.temp == v,n.v +1)
-      nn.state <- matrix(cube.state[term4.temp],ncol = 6,byrow = FALSE)
-      nn.count<-apply(nn.state,1,tabulate,nbins=K)
-      nn.count[h,] <-nn.count[h,]+1
-      log.term4<-sum(log(colSums(exp(2*beta*nn.count))))
-      P.Z[v,h] <-  log.term1+ log.term2+ log.term3 - log.term4
-      #P.Z[v,h] <-  log.term1+ log.term3 - log.term4
-    }
-    P.Z[v,] <-  P.Z[v,] -  max(P.Z[v,]) #ADDED FOR NUMRECIAL STABILITY
-    P.Z[v,] <- exp(P.Z[v,])
-    P.Z[v,] <-  P.Z[v,] / sum( P.Z[v,])
-    cube.state[v] <- which.is.max(P.Z[v,]) #UPDATE THE STATE FOR VOXEL v
-  }
-  Z.nv[,r+1] <- cube.state #STORE UPDATED STATES FROM THIS SWEEP
-  
-  
-  #UPDATE FOR BETA NEEDS TO BE ADDED
-  beta.opt <-nlminb(start = beta, objective = H_beta,gradient = HP_beta, cube.state = cube.state,n.v= n.v, neighbors = neighbors,lower = 0,upper = beta_u)
-  if(beta.opt$convergence != 0){
-    cat("Warning, nlminb didn't converge for beta, iteration = ", r,"\n")
-  }
-  beta <- beta.opt$par
-  beta_star[r] <- beta.opt$par
-  #END ICM ITERATION
+  # 
+  # #THIS NEEDS TO BE CHECKED CAREFULLY BY YIN - WE WERE TIRED WHEN WE FINISHED IT
+  # # Update the labelling of Z.
+  # P.Z <- matrix(0, nrow = n.v,ncol = K)
+  # n_r <- rep(0,n.v)
+  # n_r.index <- as.numeric(names(table(vert.Z)))
+  # n_r.values <- as.vector(table(vert.Z))
+  # n_r[n_r.index] <- n_r.values
+  # for (v in 1:n.v)
+  # {
+  #   for (h in 1:K)
+  #   {
+  #     log.term1 <- (-T*n_r[v]/2)*log(alpha[h])
+  #     
+  #     if (n_r[v] == 0)
+  #     {
+  #       log.term2 <- 0
+  #     }
+  #     else
+  #     {
+  #       if(n_r[v] ==1)
+  #       {
+  #         S.term2 <- t(S[which(vert.Z == v),])
+  #       }
+  #       else
+  #       {
+  #         S.term2 <- S[which(vert.Z == v),]
+  #       }
+  #       log.term2 <- sum ((sweep(S.term2, 2, mu[h,]))^2)/ (2*alpha[h]) 
+  #     }
+  #     term3.neighbors <-neighbors[v,neighbors[v,] != (n.v+1)]
+  #     log.term3 <- 4*beta*sum(cube.state[term3.neighbors] ==h)
+  #     
+  #     term4.temp <- neighbors[term3.neighbors,]
+  #     term4.temp <- replace(term4.temp,term4.temp == v,n.v +1)
+  #     nn.state <- matrix(cube.state[term4.temp],ncol = 6,byrow = FALSE)
+  #     nn.count<-apply(nn.state,1,tabulate,nbins=K)
+  #     nn.count[h,] <-nn.count[h,]+1
+  #     log.term4<-sum(log(colSums(exp(2*beta*nn.count))))
+  #     P.Z[v,h] <-  log.term1+ log.term2+ log.term3 - log.term4
+  #     #P.Z[v,h] <-  log.term1+ log.term3 - log.term4
+  #   }
+  #   P.Z[v,] <-  P.Z[v,] -  max(P.Z[v,]) #ADDED FOR NUMRECIAL STABILITY
+  #   P.Z[v,] <- exp(P.Z[v,])
+  #   P.Z[v,] <-  P.Z[v,] / sum( P.Z[v,])
+  #   cube.state[v] <- which.is.max(P.Z[v,]) #UPDATE THE STATE FOR VOXEL 
+  #   Z.state <- cube.state[vert.Z]
+  # }
+  # Z.nv[,r+1] <- cube.state #STORE UPDATED STATES FROM THIS SWEEP
+  #  
+  # 
+  # #UPDATE FOR BETA NEEDS TO BE ADDED
+  # beta.opt <-nlminb(start = beta, objective = H_beta,gradient = HP_beta, cube.state = cube.state,n.v= n.v, neighbors = neighbors,lower = 0,upper = beta_u)
+  # if(beta.opt$convergence != 0){
+  #   cat("Warning, nlminb didn't converge for beta, iteration = ", r,"\n")
+  # }
+  # beta <- beta.opt$par
+  # beta_star[r] <- beta.opt$par
+  # #END ICM ITERATION
   time.iter<-proc.time()-time.iter
   cor.iter <- cor(c(true.S),c(S))
   rmse <- sqrt(sum( ( true.S - S)^2) /(P*T))

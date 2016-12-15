@@ -4,7 +4,7 @@ library(scatterplot3d)
 library(MASS)
 library(PottsUtils)
 library(MCMCpack)
-
+rm(list = ls())
 #this seems unstable so set it externally so that it works on your environment
 #set it so that the current directory is ICM
 #setwd(dir = "../../ICM/")
@@ -24,6 +24,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # SNR is the measurement noise ratio. 
   
   # Vertices data is obtained from the MATLAB as a mat file named "vert".
+  P=1000;K=4;T=200;n_E=1000;n_M=1000;c_length=20;sigma2_a=1;sigma2_A=1;sigma2_u1=1;SNR=0.1;beta_u=NULL
   
   data <- readMat("./Data/vert.mat")
   
@@ -36,20 +37,25 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   plot3d(sub.vert,pch=19,col="red")
   play3d( spin3d(rpm=3), duration=5)
   
-  len.cubes <- c_length
-  x.cut <- seq(-68,68+len.cubes,len.cubes)
+  # Initial Number of voxels - this input will be modified
+  n.v <- 400
+  
+  d.length <- ((range(sub.vert$x)[2] - range(sub.vert$x)[1])*(range(sub.vert$y)[2] - range(sub.vert$y)[1])*(range(sub.vert$z)[2] - range(sub.vert$z)[1]) / n.v)^(1/3)
+  len.cubes <- d.length 
+  
+  x.cut <- seq(floor(range(sub.vert$x)[1]),range(sub.vert$x)[2]+len.cubes,len.cubes)
   # Numeber of intervals on x axis
   n.x <- length(x.cut) - 1
   
-  y.cut <- seq(-105,68+len.cubes,len.cubes)
+  y.cut <- seq(floor(range(sub.vert$y)[1]),range(sub.vert$y)[2]+len.cubes,len.cubes)
   # Numeber of intervals on y axis
   n.y <- length(y.cut) -1
   
-  z.cut <- seq(-49,78+len.cubes,len.cubes)
+  z.cut <- seq(floor(range(sub.vert$z)[1]),range(sub.vert$z)[2]+len.cubes,len.cubes)
   # Numeber of intervals on z axis
   n.z <- length(z.cut) - 1
   
-  # total number of voxels:
+  # Actual total number of voxels:
   n.v <- n.x*n.y*n.z
   
   # For each vertex, finding which intervals its x, y, z in. 
@@ -61,6 +67,32 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   {
     vert.Z[i] <- vl[i,1] + (vl[i,2] -1)*n.x + (vl[i,3] -1)*(n.x*n.y)
   }
+  
+  # len.cubes <- c_length
+  # x.cut <- seq(-68,68+len.cubes,len.cubes)
+  # # Numeber of intervals on x axis
+  # n.x <- length(x.cut) - 1
+  # 
+  # y.cut <- seq(-105,68+len.cubes,len.cubes)
+  # # Numeber of intervals on y axis
+  # n.y <- length(y.cut) -1
+  # 
+  # z.cut <- seq(-49,78+len.cubes,len.cubes)
+  # # Numeber of intervals on z axis
+  # n.z <- length(z.cut) - 1
+  # 
+  # # total number of voxels:
+  # n.v <- n.x*n.y*n.z
+  # 
+  # # For each vertex, finding which intervals its x, y, z in. 
+  # vl <- cbind(findInterval(sub.vert$x,x.cut),findInterval(sub.vert$y,y.cut),findInterval(sub.vert$z,z.cut))
+  # 
+  # # Mapping the indices into the labelling of each cube. 
+  # vert.Z <- rep(NA, P)
+  # for(i in 1:P)
+  # {
+  #   vert.Z[i] <- vl[i,1] + (vl[i,2] -1)*n.x + (vl[i,3] -1)*(n.x*n.y)
+  # }
   
   # Connectivity Matrix 
   #YIN: REMOVE THIS AND HAVE A AS AN ARGUMENT TO THE FUNCTION
@@ -97,7 +129,12 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   # Forward Operator
   X_M  <- matrix(replicate(n_M*P,rnorm(1,0,sqrt(.1))), ncol=P,byrow = T)
   X_E  <- matrix(replicate(n_E*P,rnorm(1,0,sqrt(.1))), ncol=P,byrow = T)
+  save(X_E,file = "./Data/X_E.RData")
+  save(X_M,file = "./Data/X_M.RData")
   
+  #Scale X for both simulated and real data
+  X_E <-  X_E / sqrt((1 / n_E)* sum(diag(X_E %*% t(X_E))))
+  X_M <-  X_M / sqrt((1 / n_M)* sum(diag(X_M %*% t(X_M))))
   
   # Generate random samples from a Potts model
   # 3D array specifying cubes.
@@ -109,13 +146,13 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
                        0,0,0,0), nrow=3, byrow=TRUE)
   neighbors <- getNeighbors(mask, neiStruc)
   blocks <- getBlocks(mask, nblock=2)
-  Z.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta_u )
+  cube.state <- BlocksGibbs(1, nvertex = n.v,ncolor = K, neighbors = neighbors, blocks = blocks, beta = beta_u )
   
   
   # Map the vertices into cube and get the cube state for correspoding vertex.
-  cube.state <- Z.state[vert.Z]
+  Z.state <- cube.state[vert.Z]
   r3dDefaults$windowRect <- c(0,45,780,667) 
-  plot3d(sub.vert,col = cube.state)
+  plot3d(sub.vert,col = Z.state)
   play3d( spin3d(rpm=3), duration=5)
   # Covariance Matrix
   H_M <- diag(1, nrow = n_M, ncol = n_M)
@@ -138,14 +175,14 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
                     rnorm(1, mu[3,t],sqrt(alpha[3])),
                     rnorm(1, mu[4,t],sqrt(alpha[4])))
       
-      S[j,t] <- mix.comp[cube.state[j]]
+      S[j,t] <- mix.comp[Z.state[j]]
     }  
     M[,t] <- X_M %*% S[,t] 
     E[,t] <- X_E %*% S[,t]
     
   }
   
-  matplot(t(S),type = "l",col = cube.state,ylab="S(t)", xlab="t")
+  matplot(t(S),type = "l",col = Z.state,ylab="S(t)", xlab="t")
   title(main = "Time course of S(t)")
   
   matplot(t(M),type = "l",ylab="M(t)", xlab="t")
@@ -178,9 +215,7 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   save(Y_M,file = "./Data/Y_M.RData")  
   save(Y_E,file = "./Data/Y_E.RData")  
   save(H_M,file = "./Data/H_M.RData")  
-  save(H_E,file = "./Data/H_E.RData")  
-  save(X_E,file = "./Data/X_E.RData")
-  save(X_M,file = "./Data/X_M.RData")
+  save(H_E,file = "./Data/H_E.RData") 
   save(cube.state,file = "./Data/cube_state.RData")
   save(A,file = "./Data/A.RData")
   save(sigma2_E,file = "./Data/sigma2_E.RData")
@@ -189,11 +224,12 @@ signal_sim <- function(P,K,T, n_E, n_M, beta_u=NULL, c_length, sigma2_a, sigma2_
   save(mu,file = "./Data/mu.RData")
   save(sub.vert,file = "./Data/sub_vert.RData")
   save(S, file = "./Data/S.RData")
+  save(alpha,file = "./Data/alpha.RData")
+  save(beta_u,file = "./Data/beta.RData")
 }
 
 
 
-# P=1000;K=4;T=200;n_E=300;n_M=250;c_length=20;sigma2_a=1;sigma2_A=1;sigma2_u1=1;SNR=0.1;beta_u=NULL
 
 # signal_sim(P = 1000, n_E = 300,K = 4,T = 200,n_M = 250,beta_u = NULL,c_length = 20,sigma2_a = 1,sigma2_A = 1,sigma2_u1 = 1,SNR = 0.1)
 

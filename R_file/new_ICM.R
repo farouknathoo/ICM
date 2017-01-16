@@ -3,6 +3,7 @@
 ## Algorithm and pseudo code could be found in the Model_Setup document.
 ## Simulaton data could be read from the Data folder directory. 
 ## The main working directory is always under "./ICM"
+## Date last modified Jan 11th. Code seems working fine.
 setwd(dir = "~/ICM/")
 rm(list = ls())
 library(rgl)
@@ -20,7 +21,7 @@ load("./Data/H_M.RData")
 load("./Data/H_E.RData")
 load("./Data/X_E.RData")
 load("./Data/X_M.RData")
-load("./Data/sub_vert.RData")
+#load("./Data/sub_vert.RData")
 load("./Data/S.RData")
 #load("./Data/cube_state.RData")
 #load("./Data/A.RData")
@@ -110,15 +111,16 @@ a_a <- 0.1; b_a <- 0.1
 a_alpha <- 0.1; b_alpha <- 0.1
 sigma2_A <- 0.25
 sigma2_mu1 <- 1 # check sensitivity
-beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
+beta_u <- 0.5*2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
 
 ###################################################################
 ###################################################################
 ## Initializing values
-beta_u_eps<-0.05
+beta_u_eps<-0.15
 beta <- runif(1,0,beta_u)
 #beta <- true.beta
-
+#beta_u <- beta_u - 0.05
+  
 A <- diag(sample(seq(0.9,0.95,0.01),K-1))
 #A <- true.A
 
@@ -188,10 +190,10 @@ plot3d(sub.vert,col = Z.state,pch=19)
 sigma2_a <- b_a/(a_a+1) #initialize at prior mode
 #sigma2_a <- true.sigma2_a
 
-sigma2_E <- median(apply(Y_E,1,var))*0.1 #allocate 10% of median data variance to noise
-#sigma2_E <- true.sigma2_E
-sigma2_M <- median( apply(Y_M,1,var))*0.1
-#sigma2_M <- true.sigma2_M
+# #sigma2_E <- median(apply(Y_E,1,var))*0.1 #allocate 10% of median data variance to noise
+# sigma2_E <- true.sigma2_E
+# #sigma2_M <- median( apply(Y_M,1,var))*0.1
+# sigma2_M <- true.sigma2_M
 
 alpha <- rep(b_alpha/(a_alpha+1),K)
 #alpha <- true.alpha
@@ -211,13 +213,17 @@ while (t < T)
 
 #####get initial values for sources use either:
 # #Moore-Penrose Inverse
-# Y.start<-rbind(Y_E,Y_M)
-# X.start<-rbind(X_E,X_M)
-# X.start.mpinv<-ginv(X.start)
-# S <- X.start.mpinv%*%Y.start
+Y.start<-rbind(Y_E,Y_M)
+X.start<-rbind(X_E,X_M)
+X.start.mpinv<-ginv(X.start)
+
+S <- X.start.mpinv%*%Y.start
+
+sigma2_E <- mean(apply(Y_E - X_E %*% S, 1, var))
+sigma2_M <- mean(apply(Y_M - X_M %*% S, 1, var))
 
 # #simulate from the assumed prior
-S<-matrix(rnorm(P*T,mean = 0,sd = 1),nrow=P,ncol=T)
+#S<-matrix(rnorm(P*T,mean = 0,sd = 1),nrow=P,ncol=T)
 # S<-matrix(0,nrow=P,ncol=T)
 # for (t in 1:T)
 # {
@@ -236,7 +242,7 @@ cor(c(true.S),c(S))
 
 
 ## ICM updating algorithm and intial set-up.
-R  <- 13 #NUMBER OF ICM ITERATIONS TO RUN
+R  <- 200 #NUMBER OF ICM ITERATIONS TO RUN
 
 ##STORE VALUES
 sigma2_M_star <- rep(0,R)
@@ -448,6 +454,15 @@ while (r < R) {
   #   }
   #   S_star[,,r+1] <- S
   
+  #UPDATE FOR BETA NEEDS TO BE ADDED
+  beta.opt <-nlminb(start = beta, objective = H_beta,gradient = HP_beta, cube.state = cube.state,n.v= n.v, neighbors = neighbors,lower = 0,upper = beta_u)
+  if(beta.opt$convergence != 0){
+    cat("Warning, nlminb didn't converge for beta, iteration = ", r,"\n")
+  }
+  beta <- beta.opt$par
+  beta_star[r+1] <- beta.opt$par
+  
+  
   # new version with vectorization
   W_1j <- 1/sigma2_M * W_1j_C1 + 1/sigma2_E*W_1j_C2+ 1/alpha[Z.state]
   for (j in 1:P)
@@ -513,13 +528,6 @@ while (r < R) {
   Z.nv[,r+1] <- cube.state #STORE UPDATED STATES FROM THIS SWEEP
   #  
   # 
-  #UPDATE FOR BETA NEEDS TO BE ADDED
-  beta.opt <-nlminb(start = beta, objective = H_beta,gradient = HP_beta, cube.state = cube.state,n.v= n.v, neighbors = neighbors,lower = 0,upper = beta_u)
-  if(beta.opt$convergence != 0){
-    cat("Warning, nlminb didn't converge for beta, iteration = ", r,"\n")
-  }
-  beta <- beta.opt$par
-  beta_star[r] <- beta.opt$par
   #END ICM ITERATION
   time.iter<-proc.time()-time.iter
   cor.iter <- cor(c(true.S),c(S))

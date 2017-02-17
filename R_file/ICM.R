@@ -110,12 +110,13 @@
   a_alpha <- 0.1; b_alpha <- 0.1
   sigma2_A <- 0.25
   sigma2_mu1 <- 1 # check sensitivity
-  beta_u <- 2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
+  beta_u <- 0.5*2/3*log(0.5*(sqrt(2) + sqrt(4*K - 2)))
   
   ###################################################################
   ###################################################################
   ## Initializing values
-  beta_u_eps<-0.05
+  beta_u_eps<-0.1
+  # beta_u <- beta_u + beta_u_eps
   beta <- runif(1,0,beta_u)
   #beta <- true.beta
   
@@ -195,7 +196,7 @@
   
   
   ## ICM updating algorithm and intial set-up.
-  R  <- 10 #NUMBER OF ICM ITERATIONS TO RUN
+  R  <- 11 #NUMBER OF ICM ITERATIONS TO RUN
   
   ##STORE VALUES
   sigma2_M_star <- rep(0,R)
@@ -478,7 +479,7 @@
       cat("Warning, nlminb didn't converge for beta, iteration = ", r,"\n")
     }
     beta <- beta.opt$par
-    beta_star[r] <- beta.opt$par
+    beta_star[r+1] <- beta.opt$par
     #END ICM ITERATION
     time.iter<-proc.time()-time.iter
     cor.iter <- cor(c(true.S),c(S))
